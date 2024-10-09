@@ -18,5 +18,4 @@ func TestTCPTransport(t *testing.T) {
 
 	assert.Nil(t, tr.ListenAndAccept())
 
-	select {}
 }
