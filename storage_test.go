@@ -25,6 +25,10 @@ func TestStorage(t *testing.T) {
 	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
+
+	if ok := s.Has(key); !ok {
+		t.Error(ok)
+	}
 	r, err := s.read(key)
 	if err != nil {
 		t.Error(err)
@@ -32,7 +36,7 @@ func TestStorage(t *testing.T) {
 	b, _ := io.ReadAll(r)
 	fmt.Println(string(b))
 	assert.Equal(t, data, b)
-	s.delete(key)
+	s.Delete(key)
 }
 func TestDelete(t *testing.T) {
 	opts := StorageOpts{PathTransformFunc: CASPathTransformFunc}
@@ -43,7 +47,7 @@ func TestDelete(t *testing.T) {
 		t.Error(err)
 	}
 
-	if err := s.delete(key); err != nil {
+	if err := s.Delete(key); err != nil {
 		t.Error(err)
 	}
 }
