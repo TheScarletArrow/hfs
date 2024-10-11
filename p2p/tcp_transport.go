@@ -1,13 +1,24 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"net"
 )
 
 type TCPPeer struct {
 	conn     net.Conn
 	outbound bool
+}
+
+func (p *TCPPeer) Send(bytes []byte) error {
+	_, err := p.conn.Write(bytes)
+	return err
+}
+
+func (p *TCPPeer) RemoteAddr() net.Addr {
+	return p.conn.RemoteAddr()
 }
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
@@ -46,6 +57,8 @@ func (t *TCPTransport) ListenAndAccept() error {
 
 	go t.acceptLoop()
 
+	log.Printf("TCP listening on %s", t.ListenAddr)
+
 	return nil
 }
 
@@ -56,16 +69,19 @@ func (t *TCPTransport) Consume() <-chan RPC {
 func (t *TCPTransport) acceptLoop() {
 	for {
 		conn, err := t.listener.Accept()
+		if errors.Is(err, net.ErrClosed) {
+			return
+		}
 		if err != nil {
 			fmt.Printf("tcp error: %s", err)
 		}
-
-		go t.handleConn(conn)
+		fmt.Printf("TCP connection accepted: %s\n", t.ListenAddr)
+		go t.handleConn(conn, false)
 	}
 }
 
-func (t *TCPTransport) handleConn(conn net.Conn) {
-	peer := NewTCPPeer(conn, true)
+func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
+	peer := NewTCPPeer(conn, outbound)
 
 	var err error
 	defer func() {
@@ -93,4 +109,17 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 		msg.From = conn.RemoteAddr()
 		t.rpcChan <- msg
 	}
+}
+
+func (t *TCPTransport) Close() error {
+	return t.listener.Close()
+}
+func (t *TCPTransport) Dial(addr string) error {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
+	go t.handleConn(conn, true)
+
+	return nil
 }

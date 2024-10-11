@@ -62,7 +62,11 @@ type Storage struct {
 	StorageOpts
 }
 
-func NewStore(opts StorageOpts) *Storage {
+func (s *Storage) Clear() error {
+	return os.RemoveAll(s.Root)
+
+}
+func NewStorage(opts StorageOpts) *Storage {
 	if opts.PathTransformFunc == nil {
 		opts.PathTransformFunc = DefaultPathTransformFunc
 	}
@@ -77,10 +81,7 @@ func (s *Storage) Has(key string) bool {
 	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.fullPath())
 	_, err := os.Stat(fullPathWithRoot)
 
-	if errors.Is(err, fs.ErrNotExist) {
-		return false
-	}
-	return true
+	return !errors.Is(err, fs.ErrNotExist)
 
 }
 func (s *Storage) Delete(key string) error {
@@ -95,7 +96,10 @@ func (s *Storage) Delete(key string) error {
 	firstPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FirstPathName())
 	return os.RemoveAll(firstPathNameWithRoot)
 }
-func (s *Storage) read(key string) (io.Reader, error) {
+func (s *Storage) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
+}
+func (s *Storage) Read(key string) (io.Reader, error) {
 	f, err := s.readStream(key)
 	if err != nil {
 		return nil, err
